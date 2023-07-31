@@ -78,6 +78,10 @@ type PhantomProfile struct {
 var DefaultProfile *PhantomProfile = nil
 var DefaultInterface *PhantomInterface = nil
 
+var default_config = Config{}
+
+var DomainMap map[string]Config
+
 var SubdomainDepth = 2
 var LogLevel = 0
 var Forward bool = false
@@ -156,7 +160,11 @@ func (profile *PhantomProfile) GetInterface(name string) *PhantomInterface {
 		offset++
 	}
 
-	return DefaultInterface
+	// allow resolution of domains that are not present in default.conf
+	if default_config.Option != 0{
+		return default_config, true
+	}
+	return Config{0, 0, 0, 0, "", ""}, false
 }
 
 /*
@@ -546,7 +554,12 @@ func LoadProfile(filename string) error {
 							CurrentInterface = &face
 							logPrintln(1, keys[0], CurrentInterface)
 						} else {
-							logPrintln(1, keys[0], "invalid interface")
+							DomainMap[keys[0]] = Config{option, minTTL, maxTTL, syncMSS, server, device}
+							// allow resolution of domains that are not present in default.conf
+							if keys[0]=="default.config.com" {
+								fmt.Println(keys[0], "used as default_config. ")
+								default_config = DomainMap[keys[0]]
+							}
 						}
 					} else {
 						addr, err := net.ResolveTCPAddr("tcp", keys[0])
